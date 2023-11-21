@@ -49,11 +49,9 @@ log_dir = "./logs/"
 logger = configure(log_dir, ["stdout", "tensorboard"])
 # Set the device for Stable Baselines3
 device = "cuda" if torch.cuda.is_available() else "cpu"
+# model = PPO(CustomAZPolicy, env, n_steps=131072, batch_size=4096, verbose=1) # init training
+model = PPO.load("./eval_logs/best_model_PPO.zip")  # resume training
 env = ConnectFourEnv()
-model = PPO(
-    CustomAZPolicy, env, n_steps=131072, batch_size=4096, verbose=1
-)  # init training
-# model = PPO.load("./eval_logs/best_model_PPO.zip")  # resume training
 
 
 # Set the environment for the model

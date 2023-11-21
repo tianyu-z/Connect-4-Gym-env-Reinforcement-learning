@@ -1,9 +1,9 @@
 from connect_four_gymnasium import ConnectFourEnv
 from connect_four_gymnasium.players import BabyPlayer
-from stable_baselines3 import PPO
+from stable_baselines3 import DQN
 from connect_four_gymnasium.players.ModelPlayer import ModelPlayer
 from connect_four_gymnasium.tools import EloLeaderboard
-from net import CustomAZPolicy
+from net import CustomAZDQNPolicy
 import torch
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.callbacks import CheckpointCallback
@@ -25,7 +25,7 @@ class CustomEvalCallback(BaseCallback):
         self.best_elo = -float("inf")
         # Ensure the checkpoint directory exists
         os.makedirs(checkpoint_path, exist_ok=True)
-        self.name_prefix = "PPO_4096"
+        self.name_prefix = "DQN_4096"
 
     def _on_step(self) -> bool:
         # Checkpointing
@@ -40,7 +40,7 @@ class CustomEvalCallback(BaseCallback):
                 print(f"Step: {self.n_calls}: Your Elo: {elo}")
             if elo > self.best_elo:
                 self.best_elo = elo
-                self.model.save(self.log_path + "best_model_PPO")
+                self.model.save(self.log_path + "best_model_DQN")
         return True
 
 
@@ -50,11 +50,8 @@ logger = configure(log_dir, ["stdout", "tensorboard"])
 # Set the device for Stable Baselines3
 device = "cuda" if torch.cuda.is_available() else "cpu"
 env = ConnectFourEnv()
-model = PPO(
-    CustomAZPolicy, env, n_steps=131072, batch_size=4096, verbose=1
-)  # init training
-# model = PPO.load("./eval_logs/best_model_PPO.zip")  # resume training
-
+model = DQN(CustomAZDQNPolicy, env, batch_size=8192, verbose=1)  # init training
+# model = DQN.load("./eval_logs/best_model_DQN.zip")  # resume training
 
 # Set the environment for the model
 opponent = ModelPlayer(model, name="yourself")
@@ -65,7 +62,7 @@ eval_env = ConnectFourEnv()
 eval_freq = 1000
 checkpoint_freq = 10000
 eval_log_path = "./eval_logs/"
-checkpoint_path = "./PPOmodels/"
+checkpoint_path = "./DQNmodels/"
 callback = CustomEvalCallback(
     eval_env,
     eval_freq=eval_freq,
@@ -74,4 +71,4 @@ callback = CustomEvalCallback(
     checkpoint_freq=checkpoint_freq,
 )
 
-model.learn(total_timesteps=10000000, callback=callback)
+model.learn(total_timesteps=20000000, callback=callback)

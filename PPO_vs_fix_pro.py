@@ -1,5 +1,5 @@
 from connect_four_gymnasium import ConnectFourEnv
-from connect_four_gymnasium.players import BabyPlayer
+from connect_four_gymnasium.players import AdultSmarterPlayer
 from stable_baselines3 import PPO
 from connect_four_gymnasium.players.ModelPlayer import ModelPlayer
 from connect_four_gymnasium.tools import EloLeaderboard
@@ -25,7 +25,7 @@ class CustomEvalCallback(BaseCallback):
         self.best_elo = -float("inf")
         # Ensure the checkpoint directory exists
         os.makedirs(checkpoint_path, exist_ok=True)
-        self.name_prefix = "PPO_4096"
+        self.name_prefix = "best_model_PPO_4096_vs_AdultSmarterPlayer"
 
     def _on_step(self) -> bool:
         # Checkpointing
@@ -35,12 +35,12 @@ class CustomEvalCallback(BaseCallback):
             )
             self.model.save(checkpoint_file)
         if self.n_calls % self.eval_freq == 0:
-            elo = EloLeaderboard().get_elo(opponent, num_matches=250)
+            elo = EloLeaderboard().get_elo(fix_opponent, num_matches=250)
             if self.verbose > 0:
                 print(f"Step: {self.n_calls}: Your Elo: {elo}")
             if elo > self.best_elo:
                 self.best_elo = elo
-                self.model.save(self.log_path + "best_model_PPO")
+                self.model.save(self.log_path + "best_model_PPO_vs_AdultSmarterPlayer")
         return True
 
 
@@ -53,12 +53,12 @@ env = ConnectFourEnv()
 model = PPO(
     CustomAZPolicy, env, n_steps=131072, batch_size=4096, verbose=1
 )  # init training
-# model = PPO.load("./eval_logs/best_model_PPO.zip")  # resume training
+# model = PPO.load("./eval_logs/best_model_PPO_vs_AdultSmarterPlayer.zip")  # resume training
 
 
 # Set the environment for the model
-opponent = ModelPlayer(model, name="yourself")
-env.change_opponent(opponent)
+fix_opponent = AdultSmarterPlayer()
+env.change_opponent(fix_opponent)
 model.set_env(env)
 
 eval_env = ConnectFourEnv()

@@ -169,3 +169,62 @@ class CustomAZPolicy(ActorCriticPolicy):
         # Process observations through your network
         action, value, log_prob = self.az_resnet(obs)
         return action, value, log_prob
+
+
+class AZDQNResNet(nn.Module):
+    def __init__(
+        self,
+        state_dims: tuple[int, ...],
+        action_dims: int,
+        res_filters=128,
+        res_layers=10,
+        head_filters=32,
+        **kwargs
+    ):
+        super(AZDQNResNet, self).__init__()
+
+        self.conv = ConvBlock(1, res_filters)
+        self.res_layers = nn.Sequential(
+            *[ResBlock(res_filters) for _ in range(res_layers)]
+        )
+        self.value_head_0 = ValueBlock(
+            int(np.prod(state_dims[1:])), res_filters, head_filters
+        )
+
+        self.to(DEVICE)
+
+    def forward(self, x: torch.tensor):
+        # batch_size, w, h = x.shape
+        # sides = torch.ones((batch_size, 1, w, h), dtype=torch.float32, device=DEVICE)
+        # if isinstance(side, int):
+        #     sides = torch.ones((batch_size, 1, w, h), dtype=torch.float32, device=DEVICE)
+        # else:
+        #     sides = side.view(-1, 1, 1, 1).repeat(1, 1, w, h)
+
+        # x = torch.cat((x, sides), dim=1)
+        x = x.unsqueeze(1)
+        x = self.conv(x)
+        x = self.res_layers(x)
+
+        value = self.value_head_0(x)  # Get the value from the value head
+        return value
+
+
+class CustomAZDQNPolicy(ActorCriticPolicy):
+    def __init__(self, observation_space, action_space, lr_schedule, **kwargs):
+        super(CustomAZDQNPolicy, self).__init__(
+            observation_space, action_space, lr_schedule, **kwargs
+        )
+        self.q_net = AZDQNResNet(
+            state_dims=observation_space.shape,
+            action_dims=action_space.n,
+            **kwargs  # Any additional parameters
+        )
+        self.q_net_target = AZDQNResNet(
+            state_dims=observation_space.shape, action_dims=action_space.n, **kwargs
+        )
+
+    def forward(self, obs, deterministic=False):
+        # Process observations through your network
+        value = self.q_net(obs)
+        return value
