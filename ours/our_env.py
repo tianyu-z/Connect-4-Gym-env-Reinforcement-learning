@@ -85,7 +85,7 @@ class BaseEnv(ABC):
             self.turns += 1
             self.curr_player = self.curr_player.switch()
 
-        return self.done
+        return self.board, self.done
 
     @abstractmethod
     def get_masks(self) -> np.ndarray:

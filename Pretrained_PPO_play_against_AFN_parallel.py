@@ -11,10 +11,12 @@ import os
 import torch
 import pickle
 import numpy as np
+import multiprocessing
 from tqdm import tqdm
 
+
 fix_seed = True
-verbose = 0
+verbose = 1
 
 
 if fix_seed:
@@ -26,7 +28,7 @@ if fix_seed:
 
 
 # Load or train your PPO model
-PPO_model_path = "C:\\Users\\tiany\\Documents\\best_model_PPO_selfplay.zip"  # Specify the path to your trained model
+PPO_model_path = "C:\\Users\\tiany\\Documents\\best_model_PPO_vs_AdultSmarterPlayer.zip"  # Specify the path to your trained model
 model = PPO.load(PPO_model_path)
 NN = ModelPlayer(model, name="PPO", deteministic=False)
 
@@ -137,10 +139,24 @@ def play_once(verbose=verbose, first="AFN"):
         return isAFNwin
 
 
+def play_once_wrapper(_):
+    try:
+        return play_once()
+    except Exception as e:
+        # Optionally, log the error
+        # print(f"An error occurred: {e}")
+        return None  # Special value indicating error
+
+
 if __name__ == "__main__":
     result = {"win": 0, "lose": 0, "draw": 0}
-    for i in tqdm(range(1000)):
-        isAFNwin = play_once(first="AFN")
+    num_processes = multiprocessing.cpu_count()  # or set a specific number
+
+    with multiprocessing.Pool(num_processes) as pool:
+        # Using tqdm to create a progress bar
+        results = list(tqdm(pool.imap(play_once_wrapper, range(1000)), total=1000))
+
+    for isAFNwin in results:
         if isAFNwin == 1:
             result["win"] += 1
         elif isAFNwin == -1:

@@ -41,6 +41,14 @@ class ConnectFourEnv(gymnasium.Env):
         self.first_player = first_player
         self.next_player_to_play = 1
         self.main_player_name = main_player_name
+        self.np_random = None  # Add a random number generator attribute
+
+    def seed(self, seed=None):
+        """
+        Sets the seed for this environment's random number generator.
+        """
+        self.np_random, _ = gymnasium.utils.seeding.np_random(seed)
+        return [seed]
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
@@ -52,7 +60,9 @@ class ConnectFourEnv(gymnasium.Env):
         self._render_for_human()
 
         if self.first_player is None:
-            self.next_player_to_play = np.random.choice([1, -1])
+            self.next_player_to_play = self.np_random.choice(
+                [1, -1]
+            )  # Use the np_random instance
         else:
             self.next_player_to_play = self.first_player
 
@@ -61,10 +71,10 @@ class ConnectFourEnv(gymnasium.Env):
                 opponent_action = self._opponent.play(self.board)
                 self.play_action(opponent_action)
                 self.switch_player()
-
+                return self.board, {"opponent_action": opponent_action.item()}
             self._render_for_human()
 
-        return self.board, {}
+        return self.board, {"opponent_action": None}
 
     def _render_for_human(self):
         if self.render_mode == "human":
@@ -156,7 +166,7 @@ class ConnectFourEnv(gymnasium.Env):
                 time.sleep(5)
 
             if is_finish:
-                return self.board, result, True, False, {}
+                return self.board, result, True, False, {"opponent_action": None}
 
         if play_opponent and self._opponent is not None:
             opponent_action = self._opponent.play(self.board)
@@ -166,7 +176,7 @@ class ConnectFourEnv(gymnasium.Env):
                 -1 * opponent_result[1],
                 opponent_result[2],
                 opponent_result[3],
-                {"oppoent_action": opponent_action.item()},
+                {"opponent_action": opponent_action.item()},
             )
 
         return self.board, 0, False, False, {}
